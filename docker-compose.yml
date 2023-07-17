@@ -1,0 +1,145 @@
+version: "3.9"
+
+services:
+
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    env_file:
+      - .env
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - ${CONFIG_PATH}/gluetun:/gluetun
+    ports:
+      - 9091:9091
+      - 51413:51413
+      - 51413:51413/udp
+    environment:
+      - VPN_SERVICE_PROVIDER=${PROVIDER}
+      - VPN_TYPE=${TYPE}
+      - WIREGUARD_PRIVATE_KEY=${KEY}
+      - WIREGUARD_ADDRESSES=${ADDRESSES}
+      - SERVER_CITIES=${CITIES}
+    restart: unless-stopped
+    
+  transmission:
+    image: lscr.io/linuxserver/transmission:latest
+    container_name: transmission
+    network_mode: "service:gluetun"
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - ${CONFIG_PATH}/transmission:/config
+      - ${MEDIA_PATH}/downloads:/downloads
+    restart: unless-stopped
+    
+  jellyfin:
+   image: lscr.io/linuxserver/jellyfin
+    container_name: jellyfin
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - VERSION=docker
+    volumes:
+      - ${CONFIG_PATH}/jellyfin:/config
+      - ${MEDIA_PATH}/tvshows:/tv
+      - ${MEDIA_PATH}/movies:/movies
+      - ${MEDIA_PATH}/music:/music
+    ports:
+      - 8096:8096
+    restart: unless-stopped
+    
+  jellyseer:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - ${CONFIG_PATH}/jellyseerr:/app/config
+    ports:
+      - 5055:5055
+    restart: unless-stopped
+    
+  sonarr:
+    image: lscr.io/linuxserver/sonarr
+    container_name: sonarr
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - ${MEDIA_PATH}/tvshows:/tv
+      - ${MEDIA_PATH}/downloads:/downloads
+      - ${CONFIG_PATH}/sonarr:/config
+    ports:
+      - 8989:8989
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr
+    container_name: radarr
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - ${MEDIA_PATH}/movies:/movies
+      - ${MEDIA_PATH}/downloads:/downloads
+      - ${CONFIG_PATH}/radarr:/config
+    ports:
+      - 7878:7878
+    restart: unless-stopped
+    
+  lidarr:
+    image: linuxserver/lidarr
+    container_name: lidarr
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - ${CONFIG_PATH}/lidarr:/config
+      - ${MEDIA_PATH}/downloads:/downloads
+      - ${MEDIA_PATH}/music:/music
+    ports:
+      - 8686:8686
+    restart: unless-stopped
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr
+    container_name: prowlarr
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - ${CONFIG_PATH}/prowlarr:/config
+    ports:
+      - 9696:9696
+    restart: unless-stopped
+    
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    environment:
+      - WATCHTOWER_CLEANUP=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+
